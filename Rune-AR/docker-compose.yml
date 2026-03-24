@@ -38,6 +38,8 @@ services:
     volumes:
       # Mount the backend source code for live updates/reloading
       - ./back-end/server:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       # Load environment variables from a file
       - .env
