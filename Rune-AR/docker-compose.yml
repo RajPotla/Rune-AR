@@ -1,50 +1,53 @@
-version: '3.8'
-
 services:
-  # Frontend Service (React App)
-  frontend:
-    build:
-      context: ./front-end/helix # Path to the frontend directory
-      dockerfile: Dockerfile.dev # Specify the Dockerfile name
-    container_name: react_frontend_dev
-    ports:
-      - "5173:5173" # Map host port 5173 to container port 5173 (Vite default)
-    volumes:
-      # Mount the frontend source code for live updates (Hot Module Replacement)
-      # Note: node_modules are handled inside the container build process
-      - ./front-end/helix:/app
-      # Exclude node_modules from being overwritten by the volume mount
-      - /app/node_modules
-    # Keep stdin open, and allocate a pseudo-TTY, useful for interactive processes like Vite
-    stdin_open: true
-    tty: true
+  db:
+    image: postgres:15-alpine
+    container_name: rune-postgres
+    network_mode: host
     environment:
-      # Ensure Vite's HMR works correctly within Docker
-      - CHOKIDAR_USEPOLLING=true
-      # Define the backend URL for the frontend to connect to
-      - VITE_API_BASE_URL=http://backend:5001
-    depends_on:
-      - backend # Optional: Ensures backend starts before frontend attempts connection
-    networks:
-      - rune-network
+      POSTGRES_USER: rune_pg_user
+      POSTGRES_PASSWORD: securepassword123
+      POSTGRES_DB: runedb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rune_pg_user -d runedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Backend Service (Flask App)
   backend:
     build:
-      context: ./back-end/server # Path to the backend directory
-      dockerfile: Dockerfile.dev # Specify the Dockerfile name
+      context: ./back-end/server
+      dockerfile: Dockerfile.dev
     container_name: flask_backend_dev
-    ports:
-      - "5001:5001"
+    network_mode: host
     volumes:
-      # Mount the backend source code for live updates/reloading
       - ./back-end/server:/app
-    env_file:
-      # Load environment variables from a file
-      - .env
-    networks:
-      - rune-network
+    environment:
+      - DATABASE_URL=postgresql://rune_pg_user:securepassword123@127.0.0.1:5432/runedb
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your_openai_api_key_here}
+    depends_on:
+      db:
+        condition: service_healthy
 
-networks:
-  rune-network:
-    external: true
+  # Frontend Service (React App)
+  frontend:
+    build:
+      context: ./front-end/helix
+      dockerfile: Dockerfile.dev
+    container_name: react_frontend_dev
+    network_mode: host
+    volumes:
+      - ./front-end/helix:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://127.0.0.1:5001
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
