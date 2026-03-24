@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Frontend Service (React App)
   frontend:
@@ -33,6 +31,9 @@ services:
       context: ./back-end/server # Path to the backend directory
       dockerfile: Dockerfile.dev # Specify the Dockerfile name
     container_name: flask_backend_dev
+    extra_hosts:
+      # Lets DATABASE_URL use host.docker.internal on Linux (Postgres on host / published port).
+      - "host.docker.internal:host-gateway"
     ports:
       - "5001:5001" 
     volumes:
