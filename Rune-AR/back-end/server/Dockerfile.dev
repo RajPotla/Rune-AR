@@ -1,5 +1,5 @@
-# Use an official Python runtime as a parent image
-FROM python:alpine3.21
+# Debian slim: manylinux wheels (e.g. jiter for openai) install cleanly; Alpine often needs a Rust toolchain.
+FROM python:3.12-slim-bookworm
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
